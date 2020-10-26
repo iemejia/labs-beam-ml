@@ -100,7 +100,7 @@ Note: A docker image will be available soon.
 
 Run the pipeline
 
-     python classificationpipeline.py --runner PortableRunner --job_endpoint localhost:8099 --environment_type LOOPBACK
+    python classificationpipeline.py --runner PortableRunner --job_endpoint localhost:8099 --environment_type LOOPBACK
 
 ## Cross-language Pipeline (Java calls python in the middle)
 
@@ -112,11 +112,20 @@ Run the Portable Job Server from the main Beam git branch of the given version.
 
 Run the Expansion Service with user Python transform
 
-     python talend/labs/beam/ml/expansion_service.py -p 9097
+    cd python
+    python talend/labs/beam/ml/expansion_service.py -p 9097
      
 Run the pipeline
      
-     mvn exec:java -Dexec.mainClass=com.talend.labs.beam.classification.ClassificationPipeline -Pportable-runner \
+    mvn exec:java -Dexec.mainClass=com.talend.labs.beam.classification.ClassificationPipeline -Pportable-runner \
         -Dexec.args="--runner=PortableRunner --jobEndpoint=localhost:8099 --useExternal=true --expansionServiceURL=localhost:9097 --experiments=beam_fn_api"
     
-    
+
+## Invoke Python with DoFn
+
+    mvn exec:java -Dexec.mainClass=com.talend.labs.beam.transforms.python.PythonTransform
+
+### Using Beam SDK Harness
+
+
+### Using Socket Server
