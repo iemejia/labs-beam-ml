@@ -32,8 +32,8 @@ public class PythonTransform extends PTransform<PCollection<String>, PCollection
 
   @Override
   public PCollection<String> expand(PCollection<String> input) {
-    return input.apply(ParDo.of(new InvokeViaSdkHarnessDoFn()));
-    //    return input.apply(ParDo.of(new InvokeViaSocketsDoFn(code, requirements)));
+    //    return input.apply(ParDo.of(new InvokeViaSdkHarnessDoFn()));
+    return input.apply(ParDo.of(new InvokeViaSocketsDoFn(code, requirements)));
   }
 
   public static void main(String[] args) {
