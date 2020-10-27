@@ -29,10 +29,15 @@ class PythonServerInvoker {
     try {
       // TODO virtualenv setup
       processManager.startProcess(
-              processId,
-              "python",
-              Arrays.asList("-m", "http.server", String.valueOf(port)),
-              new HashMap<>());
+          processId,
+          "python",
+          Arrays.asList("-m", "http.server", String.valueOf(port)),
+          new HashMap<>());
+      //      processManager.startProcess(
+      //              processId,
+      //              "/home/ismael/projects/lucidoitdoit/env/bin/lucidoitdoit",
+      //              Arrays.asList("server", "--host=localhost:" + this.port),
+      //              new HashMap<>());
     } catch (IOException e) {
       new RuntimeException(e);
     }
