@@ -1,11 +1,18 @@
 package com.talend.labs.beam.transforms.python;
 
+import java.io.BufferedReader;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.beam.vendor.grpc.v1p26p0.com.google.common.io.ByteStreams;
+import org.apache.beam.vendor.grpc.v1p26p0.com.google.common.primitives.Bytes;
 
 class Client {
 
@@ -25,17 +32,10 @@ class Client {
    * @return id of the function in the server
    */
   String registerCode(String code) {
-    byte[] action = {0x00};
-    byte[] payload = code.getBytes(StandardCharsets.UTF_8);
-    byte[] payloadLength = ByteBuffer.allocate(4).putInt(payload.length).array();
-
-    byte[] data = new byte[action.length + payload.length + payloadLength.length];
-    System.arraycopy(action, 0, data, 0, action.length);
-    System.arraycopy(payloadLength, 0, data, action.length, payloadLength.length);
-    System.arraycopy(payload, 0, data, action.length + payloadLength.length, payload.length);
-
-    String response = request(data);
-    return response;
+    byte[] data = Bytes.concat(new byte[] {0x00}, lengthPrefixedBytes(code));
+//    String response = request(data);
+    List<String> request = request(data);
+    return request.iterator().next();
   }
 
   /**
@@ -44,31 +44,41 @@ class Client {
    * @return processed element
    */
   String execute(String codeId, String element) {
-    byte[] action = {0x01};
-    byte[] codeIdBytes = codeId.getBytes(StandardCharsets.UTF_8);
-    byte[] payload = element.getBytes(StandardCharsets.UTF_8);
-
-    byte[] data = new byte[action.length + payload.length + codeIdBytes.length];
-    System.arraycopy(action, 0, data, 0, action.length);
-    System.arraycopy(codeIdBytes, 0, data, action.length, codeIdBytes.length);
-    System.arraycopy(payload, 0, data, action.length + codeIdBytes.length, payload.length);
-
-    String response = request(data);
-    return response;
+    byte[] data =
+        Bytes.concat(new byte[] {0x01}, lengthPrefixedBytes(codeId), lengthPrefixedBytes(element));
+//    String response = request(data);
+//    return response;
+    List<String> request = request(data);
+    return request.iterator().next();
   }
 
-  private String request(byte[] data) {
+  private static byte[] lengthPrefixedBytes(String value) {
+    return lengthPrefixedBytes(value.getBytes(StandardCharsets.UTF_8));
+  }
+
+  private static byte[] lengthPrefixedBytes(byte[] bytes) {
+    return Bytes.concat(ByteBuffer.allocate(4).putInt(bytes.length).array(), bytes);
+  }
+
+  private List<String> request(byte[] req) {
     try {
-      dataOutputStream.write(data);
+      dataOutputStream.write(req);
       dataOutputStream.flush();
 
       InputStream in = socket.getInputStream();
-      StringBuilder result = new StringBuilder();
+      DataInputStream dis = new DataInputStream(in);
+      List<String> results = new ArrayList<>();
+      int length = -1;
       do {
-        result.append((char) in.read());
-      } while (in.available() > 0);
-      String output = result.toString();
-      return output;
+        length = dis.readInt();
+        if (length == -1) {
+          break;
+        }
+        byte[] data = new byte[length];
+        int read = dis.read(data);
+        results.add(new String(data, StandardCharsets.UTF_8));
+      } while (length != -1);
+      return results;
     } catch (IOException e) {
       throw new RuntimeException(e);
     }

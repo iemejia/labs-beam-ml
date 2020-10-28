@@ -40,14 +40,16 @@ public class PythonTransform extends PTransform<PCollection<String>, PCollection
     PipelineOptions options = PipelineOptionsFactory.fromArgs(args).create();
     Pipeline p = Pipeline.create(options);
 
-    String code =
-        "import nltk\n"
-            + "\n"
-            + "tokenized_text=sent_tokenize(input['sentence'])\n"
-            + "print(tokenized_text)\n";
+//    String code =
+//        "from nltk.tokenize import sent_tokenize\n"
+//            + "output = sent_tokenize(input['sentence'])\n"
+//            + "print(output)";
+    String code = "output = input + 'coco'";
     String requirements = "nltk==3.5";
+
     PCollection<String> names =
         p.apply(Create.of("Maria", "John", "Xavier", "Erika"))
+            .apply(ParDo.of(new JsonifyFn()))
             .apply(PythonTransform.of(code, requirements))
             .apply(ParDo.of(new PrintFn<>()));
     p.run().waitUntilFinish();
@@ -58,6 +60,17 @@ public class PythonTransform extends PTransform<PCollection<String>, PCollection
     public void processElement(@Element T element, OutputReceiver<T> out) {
       System.out.println("JAVA OUTPUT: " + element);
       out.output(element);
+    }
+  }
+
+  private static class JsonifyFn extends DoFn<String, String> {
+    @ProcessElement
+    public void processElement(@Element String element, OutputReceiver<String> out) {
+      String json =
+          "{ \"book\":\""
+              + element
+              + "\", \"sentence\":\"All work and no play makes jack a dull boy, all work and no play. All work and no play makes jack a dull boy, all work and no play. All work and no play makes jack a dull boy, all work and no play.\"}";
+      out.output(json);
     }
   }
 }
