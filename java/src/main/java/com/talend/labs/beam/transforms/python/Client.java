@@ -21,10 +21,12 @@ class Client {
 
   private Socket socket;
   private DataOutputStream dataOutputStream;
+  private final DataInputStream dataInputStream;
 
   Client(String host, int port) throws IOException {
     this.socket = new Socket(host, port);
     this.dataOutputStream = new DataOutputStream(this.socket.getOutputStream());
+    this.dataInputStream = new DataInputStream(socket.getInputStream());
   }
 
   /**
@@ -32,10 +34,9 @@ class Client {
    * @return id of the function in the server
    */
   String registerCode(String code) {
-    byte[] data = Bytes.concat(new byte[] {0x00}, lengthPrefixedBytes(code));
+    byte[] data = Bytes.concat(new byte[]{0x00}, lengthPrefixedBytes(code));
 //    String response = request(data);
-    List<String> request = request(data);
-    return request.iterator().next();
+    return requestOne(data);
   }
 
   /**
@@ -43,13 +44,12 @@ class Client {
    * @param element to process
    * @return processed element
    */
-  String execute(String codeId, String element) {
+  List<String> execute(String codeId, String element) {
     byte[] data =
         Bytes.concat(new byte[] {0x01}, lengthPrefixedBytes(codeId), lengthPrefixedBytes(element));
 //    String response = request(data);
 //    return response;
-    List<String> request = request(data);
-    return request.iterator().next();
+    return request(data);
   }
 
   private static byte[] lengthPrefixedBytes(String value) {
@@ -60,22 +60,34 @@ class Client {
     return Bytes.concat(ByteBuffer.allocate(4).putInt(bytes.length).array(), bytes);
   }
 
+  private String requestOne(byte[] req) {
+    try {
+      dataOutputStream.write(req);
+      dataOutputStream.flush();
+      int length = dataInputStream.readInt();
+      byte[] data = new byte[length];
+      int read = dataInputStream.read(data);
+      return new String(data, StandardCharsets.UTF_8);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+
   private List<String> request(byte[] req) {
     try {
       dataOutputStream.write(req);
       dataOutputStream.flush();
 
-      InputStream in = socket.getInputStream();
-      DataInputStream dis = new DataInputStream(in);
       List<String> results = new ArrayList<>();
       int length = -1;
       do {
-        length = dis.readInt();
+        length = dataInputStream.readInt();
         if (length == -1) {
           break;
         }
         byte[] data = new byte[length];
-        int read = dis.read(data);
+        int read = dataInputStream.read(data);
         results.add(new String(data, StandardCharsets.UTF_8));
       } while (length != -1);
       return results;

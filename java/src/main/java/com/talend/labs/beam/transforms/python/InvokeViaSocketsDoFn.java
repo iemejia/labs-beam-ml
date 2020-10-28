@@ -25,7 +25,7 @@ class InvokeViaSocketsDoFn extends DoFn<String, String> {
     // We start the target server that will process the requests
 //    PythonServerInvoker pythonServerInvoker = PythonServerInvoker.create();
 //    int port = pythonServerInvoker.getPort();
-    int port = 50007;
+    int port = 50008;
     if (this.client == null) {
       this.client = new Client(host, port);
       this.codeId = client.registerCode(code);
@@ -37,8 +37,9 @@ class InvokeViaSocketsDoFn extends DoFn<String, String> {
 
   @ProcessElement
   public void processElement(@Element String record, OutputReceiver<String> outputReceiver) {
-    String output = client.execute(codeId, record);
-    outputReceiver.output(output);
+    for (String output: client.execute(codeId, record)){
+      outputReceiver.output(output);
+    }
   }
 
   @FinishBundle

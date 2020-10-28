@@ -44,7 +44,7 @@ public class PythonTransform extends PTransform<PCollection<String>, PCollection
 //        "from nltk.tokenize import sent_tokenize\n"
 //            + "output = sent_tokenize(input['sentence'])\n"
 //            + "print(output)";
-    String code = "output = input + 'coco'";
+    String code = "output = input.upper().split(' ')";
     String requirements = "nltk==3.5";
 
     PCollection<String> names =
