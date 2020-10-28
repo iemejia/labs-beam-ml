@@ -1,12 +1,14 @@
 package com.talend.labs.beam.transforms.python;
 
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.io.GenerateSequence;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.ToString;
 import org.apache.beam.sdk.values.PCollection;
 
 public class PythonTransform extends PTransform<PCollection<String>, PCollection<String>> {
@@ -40,15 +42,19 @@ public class PythonTransform extends PTransform<PCollection<String>, PCollection
     PipelineOptions options = PipelineOptionsFactory.fromArgs(args).create();
     Pipeline p = Pipeline.create(options);
 
-//    String code =
-//        "from nltk.tokenize import sent_tokenize\n"
-//            + "output = sent_tokenize(input['sentence'])\n"
-//            + "print(output)";
-    String code = "output = input.upper().split(' ')";
+    String code =
+        "import json\n"
+            + "element = json.loads(input)\n"
+            + "from nltk.tokenize import sent_tokenize\n"
+            + "phrases = sent_tokenize(element['sentence'])\n"
+            + "output = [element['book'] + ': ' + x for x in phrases]\n"
+                + "print(output)";
+//    String code = "output = 'foo' + input";
     String requirements = "nltk==3.5";
 
     PCollection<String> names =
-        p.apply(Create.of("Maria", "John", "Xavier", "Erika"))
+        p.apply(GenerateSequence.from(0).to(100))
+            .apply(ToString.elements())
             .apply(ParDo.of(new JsonifyFn()))
             .apply(PythonTransform.of(code, requirements))
             .apply(ParDo.of(new PrintFn<>()));
