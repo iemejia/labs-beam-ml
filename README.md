@@ -123,9 +123,28 @@ Run the pipeline
 
 ## Invoke Python with DoFn
 
-    mvn exec:java -Dexec.mainClass=com.talend.labs.beam.transforms.python.PythonTransform
+### Socket Server
 
-### Using Beam SDK Harness
+Set up lucidoitdoit virtualenv.
 
+    cd lucidoitdoit
+    python -m venv env/
+    source env/bin/activate
+    ./setup.py install
+    ./bin/lucidoitdoit server --host=localhost:50007 --multi
 
-### Using Socket Server
+If the python code requires dependencies you must install it in advance in the virtualenv
+
+    pip install nltk
+    nltk.download() or python -m nltk.downloader all
+
+Run examples that uses python transform
+
+Separate phrases from a JSON payload using NLTK
+
+    mvn compile exec:java -Dexec.mainClass=com.talend.labs.beam.transforms.python.examples.PhraseTokenization
+
+Select CSV column and uppercase it in python
+
+    mvn compile exec:java -Dexec.mainClass=com.talend.labs.beam.transforms.python.examples.Uppercase
+
