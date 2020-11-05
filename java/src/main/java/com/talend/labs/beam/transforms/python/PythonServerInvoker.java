@@ -1,9 +1,11 @@
 package com.talend.labs.beam.transforms.python;
 
 import java.io.IOException;
+import java.net.Socket;
 import java.util.Arrays;
 import java.util.HashMap;
 import org.apache.beam.runners.fnexecution.environment.ProcessManager;
+import org.apache.beam.runners.fnexecution.environment.ProcessManager.RunningProcess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,22 +24,48 @@ class PythonServerInvoker {
   private Integer port;
   private final String processId = "PythonServerInvoker";
 
+
+  private static boolean isAvailable(int port) {
+    try (Socket ignored = new Socket("localhost", port)) {
+      return false;
+    } catch (IOException ignored) {
+      return true;
+    }
+  }
+
+  /**
+   * We don't use new ServerSocket(0) because it binds the port to the Java process so it is unreliable.
+   * @return -1 if not port found.
+   */
+  private static int findFreePort() {
+    for(int i = 50000; i < 65535; i++) {
+      if (!isAvailable(i)) {
+        continue;
+      }
+      return i;
+    }
+    return -1;
+  }
+
   private PythonServerInvoker() {
     processManager = ProcessManager.create();
     // TODO Assign port dynamically
-    this.port = 50007;
+    this.port = findFreePort();
     try {
       // TODO virtualenv setup
-      processManager.startProcess(
-          processId,
-          "python",
-          Arrays.asList("-m", "http.server", String.valueOf(port)),
-          new HashMap<>());
-      //      processManager.startProcess(
-      //              processId,
-      //              "/home/ismael/projects/lucidoitdoit/env/bin/lucidoitdoit",
-      //              Arrays.asList("server", "--host=localhost:" + this.port),
-      //              new HashMap<>());
+//      processManager.startProcess(
+//          processId,
+//          "python",
+//          Arrays.asList("-m", "http.server", String.valueOf(port)),
+//          new HashMap<>());
+      RunningProcess runningProcess = processManager.startProcess(
+              processId,
+              "/home/ismael/projects/lucidoitdoit/env/bin/lucidoitdoit",
+              Arrays.asList("server", "--host=localhost:" + this.port, "--multi"),
+              new HashMap<>());
+      runningProcess.isAliveOrThrow();
+      LOG.info("Started driver program");
+
     } catch (IOException e) {
       new RuntimeException(e);
     }

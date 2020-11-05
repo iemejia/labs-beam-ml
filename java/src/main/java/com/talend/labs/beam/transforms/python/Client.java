@@ -89,7 +89,7 @@ class Client {
         byte[] data = new byte[length];
         int read = dataInputStream.read(data);
         results.add(new String(data, StandardCharsets.UTF_8));
-      } while (length != -1);
+      } while (true);
       return results;
     } catch (IOException e) {
       throw new RuntimeException(e);

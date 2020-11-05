@@ -67,7 +67,7 @@ class InvokeViaSdkHarnessDoFn extends DoFn<String, String> {
 
   private static final String WINDOW_STRATEGY = "windowing_strategy";
 
-  private static ExecutableStage createExecutableStage() throws Exception {
+  private static ExecutableStage createExecutableStage(ByteString pythonTransformCode) throws Exception {
     String functionUrn = "talend:labs:ml:genreclassifier:python:v1";
     RunnerApi.Components components =
         RunnerApi.Components.newBuilder()
@@ -90,7 +90,8 @@ class InvokeViaSdkHarnessDoFn extends DoFn<String, String> {
                     .setSpec(
                         RunnerApi.FunctionSpec.newBuilder()
                             .setUrn(functionUrn)
-                            .setPayload(getUserDefinedFunctionsProtoByteString())
+//                            .setPayload(getUserDefinedFunctionsProtoByteString())
+                            .setPayload(pythonTransformCode)
                             .build())
                     .putInputs(MAIN_INPUT_NAME, INPUT_ID)
                     .putOutputs(MAIN_OUTPUT_NAME, OUTPUT_ID)
@@ -146,7 +147,8 @@ class InvokeViaSdkHarnessDoFn extends DoFn<String, String> {
       // TODO This is a hack to get the pickle python representation from somewhere
       // An implementation idea is to get this from the python server too or use.
       // We cannot use the expansion service as it is
-      byte[] array = Files.readAllBytes(Paths.get("/home/ismael/temp/beam/pickletransform"));
+//      byte[] array = Files.readAllBytes(Paths.get("/home/ismael/temp/beam/pickletransform"));
+      byte[] array = Files.readAllBytes(Paths.get("/home/ismael/temp/beam/dofnstring"));
       ByteString bytes = ByteString.copyFrom(array);
       return bytes;
     } catch (IOException e) {
@@ -209,11 +211,17 @@ class InvokeViaSdkHarnessDoFn extends DoFn<String, String> {
    */
   private transient RemoteBundle remoteBundle;
 
+  private ByteString pythonTransformCode;
+
+  InvokeViaSdkHarnessDoFn(ByteString pythonTransformCode) {
+    this.pythonTransformCode = pythonTransformCode;
+  }
+
   @Setup
   public void setup() {
     // TODO we need to do this only once per JVM
     try {
-      ExecutableStage executableStage = createExecutableStage();
+      ExecutableStage executableStage = createExecutableStage(pythonTransformCode);
       LOG.debug(executableStage.toString());
 
       // TODO

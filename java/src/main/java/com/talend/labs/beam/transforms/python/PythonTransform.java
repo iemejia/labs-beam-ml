@@ -1,22 +1,22 @@
 package com.talend.labs.beam.transforms.python;
 
-import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.io.GenerateSequence;
-import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.transforms.Create;
-import org.apache.beam.sdk.transforms.DoFn;
+import javax.annotation.Nullable;
+import org.apache.beam.runners.core.construction.ExpansionResolver;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.transforms.ToString;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.vendor.grpc.v1p26p0.com.google.protobuf.ByteString;
 
 public class PythonTransform extends PTransform<PCollection<String>, PCollection<String>> {
 
-  private String code;
-  private String requirements;
+  private final String host;
+  private final Integer port;
+  private final String code;
+  private final String requirements;
 
-  private PythonTransform(String code, String requirements) {
+  private PythonTransform(String host, @Nullable Integer port, String code, String requirements) {
+    this.host = host;
+    this.port = port;
     this.code = code;
     this.requirements = requirements;
   }
@@ -29,54 +29,16 @@ public class PythonTransform extends PTransform<PCollection<String>, PCollection
    * @return
    */
   public static PythonTransform of(String code, String requirements) {
-    return new PythonTransform(code, requirements);
+    return new PythonTransform("localhost", null, code, requirements);
   }
 
   @Override
   public PCollection<String> expand(PCollection<String> input) {
-    //    return input.apply(ParDo.of(new InvokeViaSdkHarnessDoFn()));
-    return input.apply(ParDo.of(new InvokeViaSocketsDoFn(code, requirements)));
-  }
-
-  public static void main(String[] args) {
-    PipelineOptions options = PipelineOptionsFactory.fromArgs(args).create();
-    Pipeline p = Pipeline.create(options);
-
-    String code =
-        "import json\n"
-            + "element = json.loads(input)\n"
-            + "from nltk.tokenize import sent_tokenize\n"
-            + "phrases = sent_tokenize(element['sentence'])\n"
-            + "output = [element['book'] + ': ' + x for x in phrases]\n"
-                + "print(output)";
-//    String code = "output = 'foo' + input";
-    String requirements = "nltk==3.5";
-
-    PCollection<String> names =
-        p.apply(GenerateSequence.from(0).to(100))
-            .apply(ToString.elements())
-            .apply(ParDo.of(new JsonifyFn()))
-            .apply(PythonTransform.of(code, requirements))
-            .apply(ParDo.of(new PrintFn<>()));
-    p.run().waitUntilFinish();
-  }
-
-  private static class PrintFn<T> extends DoFn<T, T> {
-    @ProcessElement
-    public void processElement(@Element T element, OutputReceiver<T> out) {
-      System.out.println("JAVA OUTPUT: " + element);
-      out.output(element);
-    }
-  }
-
-  private static class JsonifyFn extends DoFn<String, String> {
-    @ProcessElement
-    public void processElement(@Element String element, OutputReceiver<String> out) {
-      String json =
-          "{ \"book\":\""
-              + element
-              + "\", \"sentence\":\"All work and no play makes jack a dull boy, all work and no play. All work and no play makes jack a dull boy, all work and no play. All work and no play makes jack a dull boy, all work and no play.\"}";
-      out.output(json);
-    }
+    // Uncomment to test with SDK Harness
+//    ByteString pythonTransformPayload =
+//        ExpansionResolver.getPythonPTransformCode(
+//            input, "talend:labs:ml:genreclassifier:python:v1", new byte[0], "localhost:9097");
+//    return input.apply(ParDo.of(new InvokeViaSdkHarnessDoFn(pythonTransformPayload)));
+    return input.apply(ParDo.of(new InvokeViaSocketsDoFn(host, port, code, requirements)));
   }
 }
