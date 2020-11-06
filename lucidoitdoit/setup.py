@@ -37,7 +37,7 @@ setup(
     author_email="ryan@skraba.com",
     license="ASL",
     packages=["lucidoitdoit"],
-    scripts=["bin/lucidoitdoit"],
+    scripts=["bin/lucidoitdoit", "bin/lucisetup"],
     install_requires=["avro==1.10.0", "docopt==0.6.2"],
     classifiers=[
         "Development Status :: 3 - Alpha",

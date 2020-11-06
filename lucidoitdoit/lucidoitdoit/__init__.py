@@ -21,17 +21,41 @@
 import logging
 import socket
 
-import lucidoitdoit
+import lucidoitdoit.exception
 from lucidoitdoit.frame import LuciFrame
 from lucidoitdoit.udf import LuciUdfRegistry
 
+"""LuciDoItServer is used to execute arbitrary python code on arbitrary data
+
+Of course executing arbitrary python code is a dangerous, dangerous thing to do.  On the other
+hand, do it.  Do it!  Do it do it do it.  It's your machine, who's gonna tell you want you can
+and can't do with it?
+"""
+
 
 class LuciDoItServer(object):
-    def __init__(self, host: str, port: int) -> None:
-        """Initialize the  with a value."""
+    """Runs a server to execute python code"""
+
+    def __init__(self, host: str, port: int, info_file: str = None) -> None:
+        """
+        Create a server.
+
+        :param host: The host address to bind the server.
+        :param port: The port to use, or 0 to pick any free port.
+        :param info_file:  A file to save server information in.
+        """
         self.host = host
         self.port = port
+        self.__info_file = info_file
         self.__udf_registry = LuciUdfRegistry()
+
+    def __on_bind(self, socket):
+        """Called when the server socket is bound."""
+        if self.__info_file:
+            with open(self.__info_file, "w") as f:
+                logging.info("Writing info file: %s", self.__info_file)
+                f.write(str(socket.getsockname()[1]))
+        logging.info("Listening: %s", socket.getsockname())
 
     def __run_00_register_code(self, conn) -> None:
         """Registers code to be executed as a udf."""
@@ -76,21 +100,26 @@ class LuciDoItServer(object):
                 raise SystemError(f"Unknown command {cmd[0]}")
 
     def run(self) -> None:
-        """Runs the UDF execution service."""
+        """Runs the UDF execution service for a single client
+
+        This can only serve one client at a time.  No other clients can connect while that client
+        is being served.
+        """
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.bind((self.host, self.port))
-            logging.info("Listening: %s", s.getsockname())
+            self.__on_bind(s)
             while True:
-                s.listen()
+                s.listen(0)
                 try:
                     # addr is a tuple of host, port
                     connection, addr = s.accept()
                     logging.info("Connected: %s", addr)
                     with connection:
                         self.serve_client(connection)
-
                 except lucidoitdoit.exception.LuciClientDisconnect:
-                    logging.info("Client shutdown: %s", addr)
+                    logging.info("Client disconnected: %s", addr)
+                except lucidoitdoit.exception.LuciShutdownRequested:
+                    logging.info("Client requested shutdown: %s", addr)
                 finally:
                     s.shutdown(0)
 
@@ -98,16 +127,22 @@ class LuciDoItServer(object):
         import socketserver
 
         class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
-            def handle(inself):
-                logging.info("Connected: %s", inself)
+            def handle(inner_self):
+                logging.info("Connected: %s", inner_self.client_address)
                 # TODO error handling
-                self.serve_client(inself.request)
+                try:
+                    self.serve_client(inner_self.request)
+                except lucidoitdoit.exception.LuciClientDisconnect:
+                    logging.info("Client disconnected: %s", inner_self.client_address)
+                except lucidoitdoit.exception.LuciShutdownRequested:
+                    logging.info("Client requested shutdown: %s", inner_self.client_address)
+                    inner_self.server.shutdown()
 
         class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
             pass
 
         server = ThreadedTCPServer((self.host, self.port), ThreadedTCPRequestHandler)
-        logging.info("Listening: %s", server.socket.getsockname())
+        self.__on_bind(server.socket)
         with server:
             server.serve_forever()
 

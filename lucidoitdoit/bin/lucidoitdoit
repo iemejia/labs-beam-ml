@@ -19,11 +19,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Run a python server to execute 
+"""Run a python server to execute user-defined functions.
 
 Usage:
-  lucidoitdoit [--verbose] server [--host=<ip:port>] [--multi]
-  lucidoitdoit [--verbose] client [--host=<ip:port>] <CODE> <INPUT>... [--shutdown]
+  lucidoitdoit [--verbose] server [--host=<ip:port>] [--multi] [--port-file=<portfile>]
+  lucidoitdoit [--verbose] client [--host=<ip:port>] [--port-file=<portfile>] <CODE>
+      <INPUT>... [--shutdown]
   lucidoitdoit (-h | --help)
   lucidoitdoit --version
 
@@ -33,6 +34,8 @@ Options:
   --host=<ip:port>  Host for the server [default: 127.0.0.1:60986].
   --verbose         Log more information while running.
   --shutdown        Request a shutdown after the client has finished running.
+  --port-file=<pf>  If present on a server, save the port in the specified file.  Otherwise, load
+                    the port from the file.
   --multi           Run the server in multi-threaded mode (EXPERIMENTAL).
   <CODE>            A (potentially multi-line) block of code to run over the inputs.
   <INPUT>           A list of input records as strings.
@@ -70,15 +73,20 @@ def main(opts: dict) -> None:
     host_and_port = opts["--host"].split(":", 2)
     host = host_and_port[0]
     port = int(host_and_port[1] if len(host_and_port) > 1 else 0)
+    portfile = opts["--port-file"]
 
     # Specific commands
     if opts["server"]:
         if opts["--multi"]:
-            lucidoitdoit.LuciDoItServer(host, port).run_multi()
+            lucidoitdoit.LuciDoItServer(host, port, portfile).run_multi()
         else:
-            lucidoitdoit.LuciDoItServer(host, port).run()
+            lucidoitdoit.LuciDoItServer(host, port, portfile).run()
 
     elif opts["client"]:
+        if portfile:
+            with open(portfile, "r") as p:
+                port = int(p.readline())
+
         if port == 0:
             raise Exception("No port specified.")
 
@@ -109,9 +117,9 @@ def main(opts: dict) -> None:
                 s.sendall(bytes([2]))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
-        main(docopt(__doc__, version='0.1'))
+        main(docopt(__doc__, version="0.1"))
     except Exception as e:
         print(__doc__)
         print(e)
