@@ -9,6 +9,14 @@ import org.slf4j.LoggerFactory;
 class InvokeViaSocketsDoFn extends DoFn<String, String> {
   private static final Logger LOG = LoggerFactory.getLogger(InvokeViaSocketsDoFn.class);
 
+  /**
+   * An internally generated UID unique to this DoFn. This is used as a session ID that
+   * determines when a Python server is launched.
+   *
+   * For example, using a global static UID would share a server among all workers in a job
+   * instead of one per DoFn.
+   */
+  private final String uid;
   private final String host;
   private Integer port;
   private final String code;
@@ -22,12 +30,13 @@ class InvokeViaSocketsDoFn extends DoFn<String, String> {
     this.port = port;
     this.code = code;
     this.requirements = requirements;
+    this.uid = PythonServerInvoker.createUid();
   }
 
   @Setup
   public void setup() throws IOException {
     // We start the target server that will process the requests
-    PythonServerInvoker pythonServerInvoker = PythonServerInvoker.create();
+    PythonServerInvoker pythonServerInvoker = PythonServerInvoker.create(uid);
     this.port = pythonServerInvoker.getPort();
     if (this.client == null) {
       this.client = new Client(host, port);
