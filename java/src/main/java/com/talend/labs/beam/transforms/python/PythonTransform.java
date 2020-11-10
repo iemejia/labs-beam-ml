@@ -13,12 +13,19 @@ public class PythonTransform extends PTransform<PCollection<String>, PCollection
   private final Integer port;
   private final String code;
   private final String requirements;
+  private final String serverInvokerPath;
 
-  private PythonTransform(String host, @Nullable Integer port, String code, String requirements) {
+  private PythonTransform(
+      String host,
+      @Nullable Integer port,
+      String code,
+      String requirements,
+      String serverInvokerPath) {
     this.host = host;
     this.port = port;
     this.code = code;
     this.requirements = requirements;
+    this.serverInvokerPath = serverInvokerPath;
   }
 
   // TODO might we do requirements a path better so it gets the requirements from some FS?
@@ -26,19 +33,21 @@ public class PythonTransform extends PTransform<PCollection<String>, PCollection
   /**
    * @param code Python script to be executed
    * @param requirements contents of requirements.txt file to setup a virtualenv
+   * @param serverInvokerPath path to Python server invoker
    * @return
    */
-  public static PythonTransform of(String code, String requirements) {
-    return new PythonTransform("localhost", null, code, requirements);
+  public static PythonTransform of(String code, String requirements, String serverInvokerPath) {
+    return new PythonTransform("localhost", null, code, requirements, serverInvokerPath);
   }
 
   @Override
   public PCollection<String> expand(PCollection<String> input) {
     // Uncomment to test with SDK Harness
-//    ByteString pythonTransformPayload =
-//        ExpansionResolver.getPythonPTransformCode(
-//            input, "talend:labs:ml:genreclassifier:python:v1", new byte[0], "localhost:9097");
-//    return input.apply(ParDo.of(new InvokeViaSdkHarnessDoFn(pythonTransformPayload)));
-    return input.apply(ParDo.of(new InvokeViaSocketsDoFn(host, port, code, requirements)));
+    //    ByteString pythonTransformPayload =
+    //        ExpansionResolver.getPythonPTransformCode(
+    //            input, "talend:labs:ml:genreclassifier:python:v1", new byte[0], "localhost:9097");
+    //    return input.apply(ParDo.of(new InvokeViaSdkHarnessDoFn(pythonTransformPayload)));
+    return input.apply(
+        ParDo.of(new InvokeViaSocketsDoFn(host, port, code, requirements, serverInvokerPath)));
   }
 }

@@ -21,22 +21,29 @@ class InvokeViaSocketsDoFn extends DoFn<String, String> {
   private Integer port;
   private final String code;
   private final String requirements;
+  private final String serverInvokerPath;
 
   private Client client;
   private String codeId;
 
-  InvokeViaSocketsDoFn(String host, @Nullable Integer port, String code, String requirements) {
+  InvokeViaSocketsDoFn(
+      String host,
+      @Nullable Integer port,
+      String code,
+      String requirements,
+      String serverInvokerPath) {
     this.host = host;
     this.port = port;
     this.code = code;
     this.requirements = requirements;
     this.uid = PythonServerInvoker.createUid();
+    this.serverInvokerPath = serverInvokerPath;
   }
 
   @Setup
   public void setup() throws IOException {
     // We start the target server that will process the requests
-    PythonServerInvoker pythonServerInvoker = PythonServerInvoker.create(uid);
+    PythonServerInvoker pythonServerInvoker = PythonServerInvoker.create(uid, serverInvokerPath);
     this.port = pythonServerInvoker.getPort();
     if (this.client == null) {
       this.client = new Client(host, port);

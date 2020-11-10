@@ -3,6 +3,7 @@ package com.talend.labs.beam.transforms.python.examples;
 import com.talend.labs.beam.transforms.python.PythonTransform;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.TextIO;
+import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -10,8 +11,25 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 
 public class Uppercase {
+  /** Specific pipeline options. */
+  public interface UppercasePipelineOptions extends PipelineOptions {
+    @Description("Input path")
+    String getInputPath();
+
+    void setInputPath(String path);
+
+    @Description("Server invoker path")
+    String getServerInvokerPath();
+
+    void setServerInvokerPath(String path);
+  }
+
   public static void main(String[] args) {
-    PipelineOptions options = PipelineOptionsFactory.fromArgs(args).create();
+    UppercasePipelineOptions options =
+        PipelineOptionsFactory.fromArgs(args)
+            .withValidation()
+            .as(UppercasePipelineOptions.class);
+
     Pipeline p = Pipeline.create(options);
 
     String code =
@@ -19,8 +37,8 @@ public class Uppercase {
     String requirements = "nltk==3.5";
 
     PCollection<String> jsons =
-        p.apply(TextIO.read().from("/home/ismael/datasets/city_temperature/x*"))
-            .apply(PythonTransform.of(code, requirements))
+        p.apply(TextIO.read().from(options.getInputPath()))
+            .apply(PythonTransform.of(code, requirements, options.getServerInvokerPath()))
             .apply(ParDo.of(new PrintFn<>()));
 
     p.run().waitUntilFinish();

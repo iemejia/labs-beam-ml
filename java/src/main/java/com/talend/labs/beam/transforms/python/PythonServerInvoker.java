@@ -80,7 +80,7 @@ class PythonServerInvoker {
   }
 
 
-  private PythonServerInvoker(String uid) {
+  private PythonServerInvoker(String uid, String serverInvokerPath) {
     this.uid = uid;
     processManager = ProcessManager.create();
 
@@ -117,7 +117,7 @@ class PythonServerInvoker {
         this.port = findFreePort();
         RunningProcess runningProcess = processManager.startProcess(
             processId,
-            "/home/ismael/projects/lucidoitdoit/env/bin/lucidoitdoit",
+            serverInvokerPath,
             Arrays.asList("server", "--host=localhost:" + this.port, "--multi"),
             new HashMap<>());
         runningProcess.isAliveOrThrow();
@@ -132,9 +132,9 @@ class PythonServerInvoker {
     }
   }
 
-  public static synchronized PythonServerInvoker create(String uid) {
+  public static synchronized PythonServerInvoker create(String uid, String serverInvokerPath) {
     if (instance == null) {
-      instance = new PythonServerInvoker(uid);
+      instance = new PythonServerInvoker(uid, serverInvokerPath);
     }
     return instance;
   }

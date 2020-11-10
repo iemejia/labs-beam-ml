@@ -3,6 +3,7 @@ package com.talend.labs.beam.transforms.python.examples;
 import com.talend.labs.beam.transforms.python.PythonTransform;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.GenerateSequence;
+import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -11,8 +12,19 @@ import org.apache.beam.sdk.transforms.ToString;
 import org.apache.beam.sdk.values.PCollection;
 
 public class PhraseTokenization {
+  /** Specific pipeline options. */
+  public interface PhraseTokenizationPipelineOptions extends PipelineOptions {
+    @Description("Server invoker path")
+    String getServerInvokerPath();
+
+    void setServerInvokerPath(String path);
+  }
+
   public static void main(String[] args) {
-    PipelineOptions options = PipelineOptionsFactory.fromArgs(args).create();
+    PhraseTokenizationPipelineOptions options =
+        PipelineOptionsFactory.fromArgs(args)
+            .withValidation()
+            .as(PhraseTokenizationPipelineOptions.class);
     Pipeline p = Pipeline.create(options);
 
     PCollection<String> jsons =
@@ -27,7 +39,9 @@ public class PhraseTokenization {
                     + "phrases = sent_tokenize(element['sentence'])\n"
                     + "output = [element['book'] + ': ' + x for x in phrases]\n";
     String requirements = "nltk==3.5";
-    jsons.apply(PythonTransform.of(code, requirements)).apply(ParDo.of(new PrintFn<>()));
+    jsons
+        .apply(PythonTransform.of(code, requirements, options.getServerInvokerPath()))
+        .apply(ParDo.of(new PrintFn<>()));
 
     p.run().waitUntilFinish();
   }
