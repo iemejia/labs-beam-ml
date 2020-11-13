@@ -25,5 +25,6 @@
 
     <modules>
         <module>java</module>
+        <module>processing-python3</module>
     </modules>
 </project>
