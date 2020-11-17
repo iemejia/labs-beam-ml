@@ -29,12 +29,14 @@ class LuciUdfRegistry(object):
     @staticmethod
     def udfize_def_string(code: str) -> str:
         """Return a string with the code as a function"""
-        return f"""\
+        return """\
 def udf(input):
  output = None
- {" ".join(line for line in code.splitlines(True))}
+ {}
  return output
-"""
+""".format(
+            " ".join(line for line in code.splitlines(True))
+        )
 
     @staticmethod
     def udfize_def(input: str, glbCtx: dict = None, lclCtx: dict = None):
@@ -63,6 +65,7 @@ def udf(input):
             # This might not be an accurate assessment of the position of the error.
             line = e.lineno - 2
             column = e.offset - 1
+            self.log.debug("Guessing line and column: %s:%s", line, column)
             raise e
         return id
 

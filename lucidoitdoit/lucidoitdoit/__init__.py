@@ -77,7 +77,7 @@ class LuciDoItServer(object):
             for outstr in out:
                 LuciFrame.write_framed_binary(conn, outstr.encode("utf-8"))
         else:
-            raise SystemError(f"Unknown type {type(out)}")
+            raise SystemError("Unknown type {}".format(type(out)))
 
         LuciFrame.write_response_code(conn, -1)
 
@@ -97,7 +97,7 @@ class LuciDoItServer(object):
             elif cmd[0] == 2:
                 raise lucidoitdoit.exception.LuciShutdownRequested()
             else:
-                raise SystemError(f"Unknown command {cmd[0]}")
+                raise SystemError("Unknown command {}".format(cmd[0]))
 
     def run(self) -> None:
         """Runs the UDF execution service for a single client
@@ -135,7 +135,9 @@ class LuciDoItServer(object):
                 except lucidoitdoit.exception.LuciClientDisconnect:
                     logging.info("Client disconnected: %s", inner_self.client_address)
                 except lucidoitdoit.exception.LuciShutdownRequested:
-                    logging.info("Client requested shutdown: %s", inner_self.client_address)
+                    logging.info(
+                        "Client requested shutdown: %s", inner_self.client_address
+                    )
                     inner_self.server.shutdown()
 
         class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):

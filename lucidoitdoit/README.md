@@ -1,5 +1,5 @@
-LuciDoItDoIt
-==============
+LuciDoItDoIt ![Python Server CI](https://github.com/Talend/labs-beam-ml/workflows/Python%20Server%20CI/badge.svg)
+============ 
 
 `LuciDoItDoIt` is a server that does stuff, and also things. 
 

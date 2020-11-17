@@ -19,6 +19,7 @@
 # limitations under the License.
 import ast
 import unittest
+import sys
 
 import lucidoitdoit
 from lucidoitdoit.udf import LuciUdfRegistry
@@ -46,7 +47,7 @@ output = input[0] + input[1]
 
 CODE_OSNAME = """\
 import os
-output = f"Hello {input} from {os.name}"
+output = "Hello %s from %s" % (input, os.name)
 """
 
 LAMBDA_SUM = """\
@@ -54,13 +55,14 @@ input[0] + input[1]
 """
 
 LAMBDA_OSNAME = """\
-f"Hello {input} from {__import__('os').name}"
+"Hello %s from %s" % (input, __import__('os').name)
 """
 
 
 def udfize_lambda_string(code: str):
     """Return a string with the code as a function"""
-    return f"lambda input: ({code})"
+    return "lambda input: ({})".format(code)
+    # return "lambda input: (%s)" % code
 
 
 def udfize_lambda(input: str, glbCtx: dict = None, lclCtx: dict = None):
@@ -158,16 +160,24 @@ class AstModuleTestSuite(unittest.TestCase):
     def test_exec_osname_udfize_with_no_builtins(self):
         # This generates an error because the import can't be done if the built-ins aren't available
         udf = LuciUdfRegistry.udfize_def(CODE_OSNAME, glbCtx=GLOBALS_NO_BUILTINS)
-        with self.assertRaises(SystemError):
-            udf("World")
+        if sys.version_info.minor <= 7:
+            with self.assertRaises(ImportError):
+                udf("World")
+        else:
+            with self.assertRaises(SystemError):
+                udf("World")
 
     def test_exec_with_errors(self):
         # Everything is fine.
-        udf = LuciUdfRegistry.udfize_def("""output = f"Everything is {input}!" """)
+        udf = LuciUdfRegistry.udfize_def(
+            """output = "Everything is {}!".format(input) """
+        )
         self.assertEqual(udf("great!"), "Everything is great!!")
 
         # The parameter is input, not incoming.  The syntax is fine though.
-        udf = LuciUdfRegistry.udfize_def("""output = f"Everything is {incoming}!" """)
+        udf = LuciUdfRegistry.udfize_def(
+            """output = "Everything is {}!".format(incoming) """
+        )
         with self.assertRaises(NameError) as cm:
             udf("broken")
         self.assertEqual(cm.exception.args, ("name 'incoming' is not defined",))
@@ -179,15 +189,33 @@ class AstModuleTestSuite(unittest.TestCase):
         # There are two extra lines and one extra column added to the syntax error.
         # Otherwise, row 1 and column 29 is effectively where the error occurred.
         self.assertEqual(cm.exception.lineno - 2, 1)
-        self.assertEqual(cm.exception.offset - 1, 29)
+
+        if sys.version_info.minor <= 7:
+            self.assertEqual(cm.exception.offset - 1, 30)
+        else:
+            self.assertEqual(cm.exception.offset - 1, 29)
+
+        # f strings are a feature after 3.5 and have different error offsets.
+        if sys.version_info.minor <= 5:
+            return
 
         # The parameter is input, not in.  The syntax is NOT fine -- in is a keyword.
         with self.assertRaises(SyntaxError) as cm:
             LuciUdfRegistry.udfize_def("""output = f"Everything is {in}!" """)
-        self.assertEqual(cm.exception.msg, "invalid syntax")
+
         # But the line and offset are not in the original string, but in the interpolation.
-        self.assertEqual(cm.exception.lineno, 1)
-        self.assertEqual(cm.exception.offset, 2)
+        if sys.version_info.minor <= 7:
+            self.assertEqual(cm.exception.msg, "invalid syntax")
+            self.assertEqual(cm.exception.lineno, 1)
+            self.assertEqual(cm.exception.offset, 3)
+        elif sys.version_info.minor <= 8:
+            self.assertEqual(cm.exception.msg, "invalid syntax")
+            self.assertEqual(cm.exception.lineno, 1)
+            self.assertEqual(cm.exception.offset, 2)
+        else:
+            self.assertEqual(cm.exception.msg, "f-string: invalid syntax")
+            self.assertEqual(cm.exception.lineno, 3)
+            self.assertEqual(cm.exception.offset, 2)
 
         print(cm.exception.__traceback__)
 
