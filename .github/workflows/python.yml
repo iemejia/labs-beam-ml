@@ -26,7 +26,6 @@ jobs:
       - name: Format code with black
         working-directory: ./lucidoitdoit
         run: |
-          cd lucidoitdoit
           black --check lucidoitdoit tests bin/lucidoitdoit
 
   build:
