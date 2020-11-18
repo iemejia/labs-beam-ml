@@ -59,7 +59,8 @@ else
 
   # shellcheck disable=SC1091,SC2086
   source "$LUCIDOITDOIT_ENV/bin/activate" \
-      && pip install --upgrade pip "$LUCIDOITDOIT_WHL" \
+      && pip install --upgrade pip setuptools \
+      && pip install --upgrade "$LUCIDOITDOIT_WHL" \
       && "$__process_dir"/env/bin/$__server_cli
 
   # clean up file after we're done

@@ -55,6 +55,7 @@ def udf(input):
 
     def __init__(self) -> None:
         """Initialize the internal dictionary."""
+        self.log = logging.getLogger(__name__)
         self.udf_registry = {}
 
     def put(self, code: str) -> bytes:
