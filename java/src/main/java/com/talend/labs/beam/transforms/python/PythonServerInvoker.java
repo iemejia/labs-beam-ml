@@ -23,26 +23,20 @@ import java.util.Scanner;
 class PythonServerInvoker {
   private static final Logger LOG = LoggerFactory.getLogger(PythonServerInvoker.class);
 
-  /**
-   * Used to construct a session ID.
-   */
+  /** Used to construct a session ID. */
   private static final char[] RND = "abcdefghijklmnopqrstvwxyz0123456789".toCharArray();
+
   private static final int UID_LENGTH = 16;
 
   /**
-   * Override the location where the python whl can be loaded from.
-   * TODO: find dynamically not hard coded.
+   * Override the location where the python whl can be loaded from. TODO: find dynamically not hard
+   * coded.
    */
-  // private static final String WHEEL = "/home/rskraba/working/github/labs-beam-ml/lucidoitdoit/dist/lucidoitdoit-0.1-py3-none-any.whl";
+  // private static final String WHEEL =
+  // "/home/rskraba/working/github/labs-beam-ml/lucidoitdoit/dist/lucidoitdoit-0.1-py3-none-any.whl";
   private static final String WHEEL = null;
 
-  /**
-   * The location where the python whl can be loaded from.
-   * TODO: should be dynamically unzipped from the WHEEL.
-   */
-  private static final String LUCISETUP_SCRIPT =  "/home/rskraba/working/github/labs-beam-ml/lucidoitdoit/bin/lucisetup";
-
-  private static final boolean WAIT_FOR_SOCKET =  false;
+  private static final boolean WAIT_FOR_SOCKET = true;
 
   private static PythonServerInvoker instance = null;
 
@@ -56,7 +50,6 @@ class PythonServerInvoker {
   private Integer port;
   private final String processId = "PythonServerInvoker";
 
-
   private static boolean isAvailable(int port) {
     try (Socket ignored = new Socket("localhost", port)) {
       return false;
@@ -66,11 +59,13 @@ class PythonServerInvoker {
   }
 
   /**
-   * We don't use new ServerSocket(0) because it binds the port to the Java process so it is unreliable.
+   * We don't use new ServerSocket(0) because it binds the port to the Java process so it is
+   * unreliable.
+   *
    * @return -1 if not port found.
    */
   private static int findFreePort() {
-    for(int i = 50000; i < 65535; i++) {
+    for (int i = 50000; i < 65535; i++) {
       if (!isAvailable(i)) {
         continue;
       }
@@ -78,7 +73,6 @@ class PythonServerInvoker {
     }
     return -1;
   }
-
 
   private PythonServerInvoker(String uid, String serverInvokerPath) {
     this.uid = uid;
@@ -92,10 +86,9 @@ class PythonServerInvoker {
     try {
 
       if (WAIT_FOR_SOCKET) {
-        RunningProcess runningProcess = processManager.startProcess(
-            processId,
-            LUCISETUP_SCRIPT,
-            Collections.singletonList(this.uid), env);
+        RunningProcess runningProcess =
+            processManager.startProcess(
+                processId, serverInvokerPath, Collections.singletonList(this.uid), env);
 
         // Wait until the socket file appears and then read it
         Path socket = Paths.get("/tmp", uid, "lucidoitdoit.socket");
@@ -115,17 +108,16 @@ class PythonServerInvoker {
       } else {
         // TODO Assign port dynamically
         this.port = findFreePort();
-        RunningProcess runningProcess = processManager.startProcess(
-            processId,
-            serverInvokerPath,
-            Arrays.asList("server", "--host=localhost:" + this.port, "--multi"),
-            new HashMap<>());
+        RunningProcess runningProcess =
+            processManager.startProcess(
+                processId,
+                serverInvokerPath,
+                Arrays.asList("server", "--host=localhost:" + this.port, "--multi"),
+                new HashMap<>());
         runningProcess.isAliveOrThrow();
       }
 
       LOG.info("Started driver program");
-
-
 
     } catch (IOException | InterruptedException e) {
       throw new RuntimeException(e);
@@ -139,14 +131,11 @@ class PythonServerInvoker {
     return instance;
   }
 
-  /**
-   * @return a session ID for the PythonServerInvoker.
-   */
+  /** @return a session ID for the PythonServerInvoker. */
   public static String createUid() {
     StringBuilder uid = new StringBuilder("luci");
     Random rnd = new Random();
-    for (int i = 0; i < UID_LENGTH; i++)
-      uid.append(RND[rnd.nextInt(RND.length)]);
+    for (int i = 0; i < UID_LENGTH; i++) uid.append(RND[rnd.nextInt(RND.length)]);
     return uid.toString();
   }
 
