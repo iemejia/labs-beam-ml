@@ -55,7 +55,7 @@ Testing and automation
 ----------------------
 
 ```
-pip install nose black flake8
+pip install --upgrade setuptools pip nose black flake8
 black lucidoitdoit tests bin/lucidoitdoit
 flake8 lucidoitdoit tests bin/lucidoitdoit
 nosetests
