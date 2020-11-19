@@ -45,6 +45,7 @@ class InvokeViaSocketsDoFn extends DoFn<String, String> {
     // We start the target server that will process the requests
     PythonServerInvoker pythonServerInvoker = PythonServerInvoker.create(uid, serverInvokerPath);
     this.port = pythonServerInvoker.getPort();
+    LOG.debug("Connecting to " + this.host + ":" + this.port);
     if (this.client == null) {
       this.client = new Client(host, port);
       this.codeId = client.registerCode(code);

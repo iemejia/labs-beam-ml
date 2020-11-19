@@ -84,7 +84,6 @@ class PythonServerInvoker {
     }
 
     try {
-
       if (WAIT_FOR_SOCKET) {
         RunningProcess runningProcess =
             processManager.startProcess(
@@ -92,7 +91,8 @@ class PythonServerInvoker {
 
         // Wait until the socket file appears and then read it
         Path socket = Paths.get("/tmp", uid, "lucidoitdoit.socket");
-        int attempts = 10;
+        LOG.debug("Trying to read socket info at " + socket);
+        int attempts = 60;
         while (attempts-- > 0) {
           if (Files.exists(socket)) {
             try (Scanner scanner = new Scanner(socket)) {
@@ -104,9 +104,13 @@ class PythonServerInvoker {
           }
         }
 
+        LOG.info("Server available at " + this.port);
+        if (this.port == null) {
+          //TODO should we clean up the environment here?
+          throw new RuntimeException("Could not find available python server socket");
+        }
         runningProcess.isAliveOrThrow();
       } else {
-        // TODO Assign port dynamically
         this.port = findFreePort();
         RunningProcess runningProcess =
             processManager.startProcess(
@@ -118,7 +122,6 @@ class PythonServerInvoker {
       }
 
       LOG.info("Started driver program");
-
     } catch (IOException | InterruptedException e) {
       throw new RuntimeException(e);
     }
