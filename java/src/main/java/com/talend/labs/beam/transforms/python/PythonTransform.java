@@ -28,8 +28,6 @@ public class PythonTransform extends PTransform<PCollection<String>, PCollection
     this.serverInvokerPath = serverInvokerPath;
   }
 
-  // TODO might we do requirements a path better so it gets the requirements from some FS?
-
   /**
    * @param code Python script to be executed
    * @param requirements contents of requirements.txt file to setup a virtualenv
