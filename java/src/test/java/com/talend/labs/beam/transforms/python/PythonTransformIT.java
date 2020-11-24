@@ -10,12 +10,14 @@ import org.apache.beam.sdk.transforms.Count;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.values.PCollection;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 @RunWith(JUnit4.class)
+@Ignore
 public class PythonTransformIT {
 
   public interface PythonTransformITOptions extends PipelineOptions {
@@ -35,7 +37,6 @@ public class PythonTransformIT {
     String integrationTestPipelineOptions = System.getenv("integrationTestPipelineOptions");
     System.out.println(integrationTestPipelineOptions);
     System.out.println(options.getServerInvokerPath());
-    System.exit(0);
   }
 
   @Test
