@@ -21,15 +21,13 @@
 import sys
 import traceback
 
-from docopt import docopt
-
-import lucidoitdoit.main
+import lucidoitdoit
 
 if __name__ == "__main__":
     try:
-        lucidoitdoit.main.main(docopt(lucidoitdoit.main.__doc__, version="0.1"))
+        lucidoitdoit.main()
     except Exception as e:
-        print(__doc__)
+        print(lucidoitdoit.__doc__)
         print(e)
         print("-" * 60)
         traceback.print_exc(file=sys.stdout)

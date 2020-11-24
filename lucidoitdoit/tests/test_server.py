@@ -18,13 +18,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-import os
-import tempfile
 import threading
 import time
 import unittest
 
-import lucidoitdoit
+import lucidoitdoit.client
+import lucidoitdoit.server
 
 
 class LuciDoItServerThread(threading.Thread):
@@ -41,7 +40,7 @@ class LuciDoItServerThread(threading.Thread):
         threading.Thread.__init__(self)
         self.log = logging.getLogger(__name__)
         self.name = name
-        self.server = lucidoitdoit.LuciDoItServer(host, port, info_file)
+        self.server = lucidoitdoit.server.LuciDoItServer(host, port, info_file)
         self.multi = multi
 
     def run(self) -> None:
@@ -77,8 +76,8 @@ class LuciDoItServerTestSuite(unittest.TestCase):
 
         code = "output = input.upper()"
 
-        with lucidoitdoit.LuciDoItClient("", port) as client:
-            logging.info("Connected: %s", client.socket.getsockname())
+        with lucidoitdoit.client.LuciDoItClient("", port) as client:
+            logging.info("Connected: %s", client.connection.getsockname())
 
             code_id = client.send_code(code)
             self.assertNotEqual(id, "")
@@ -101,54 +100,23 @@ class LuciDoItServerTestSuite(unittest.TestCase):
         server_thread.start()
 
         results = []
-        with lucidoitdoit.LuciDoItClient("", server_thread.get_port()) as client1:
-            with lucidoitdoit.LuciDoItClient("", server_thread.get_port()) as client2:
+        with lucidoitdoit.client.LuciDoItClient("", server_thread.get_port()) as c1:
+            with lucidoitdoit.client.LuciDoItClient("", server_thread.get_port()) as c2:
                 # Note that the clients are mixing who registers code and who executes it!
                 results.extend(
-                    client2.send_input(client1.send_code("output = [input] * 75"), "A")
+                    c2.send_input(c1.send_code("output = [input] * 75"), "A")
                 )
                 results.extend(
-                    client1.send_input(client2.send_code("output = [input] * 50"), "B")
+                    c1.send_input(c2.send_code("output = [input] * 50"), "B")
                 )
                 results.extend(
-                    client2.send_input(client1.send_code("output = [input] * 25"), "C")
+                    c2.send_input(c1.send_code("output = [input] * 25"), "C")
                 )
             # client2 closed at this point and disconnected from the server
-            client1.send_shutdown()
+            c1.send_shutdown()
 
         self.assertEqual(150, len(results))
         server_thread.join()
-
-    def test_basic_with_info_file(self):
-        """A server generates an info file with port information."""
-        d = tempfile.TemporaryDirectory()
-        info_file = os.path.join(d.name, "lucidoitdoit.socket")
-
-        self.assertTrue(os.path.exists(d.name))
-        self.assertFalse(os.path.exists(info_file))
-
-        # Run the server for a single client, and block until it's started.
-        server_thread = LuciDoItServerThread("test_basic", info_file=info_file)
-        server_thread.start()
-        server_thread.get_port()
-
-        # The file should be created and contain the port.
-        self.assertTrue(os.path.exists(info_file))
-        with open(info_file, "r") as f:
-            content = f.read().strip()
-            self.assertEqual(content, str(server_thread.get_port()))
-
-        # Request a server shutdown.
-        with lucidoitdoit.LuciDoItClient("", server_thread.get_port()) as client:
-            output = client.send_shutdown()
-            self.assertEqual("OK", output)
-        server_thread.join()
-
-        # The file isn't auto-cleaned.
-        self.assertTrue(os.path.exists(info_file))
-        d.cleanup()
-        self.assertFalse(os.path.exists(d.name))
-        self.assertFalse(os.path.exists(info_file))
 
 
 if __name__ == "__main__":

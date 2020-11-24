@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- mode: python -*-
 # -*- coding: utf-8 -*-
 
@@ -18,35 +17,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import unittest
 
-from setuptools import setup
-
-
-def readme():
-    with open("README.md") as f:
-        return f.read()
+from lucidoitdoit.session import LuciAvroSession
 
 
-setup(
-    name="lucidoitdoit",
-    version="0.1",
-    description="Do it do it do it",
-    long_description=readme(),
-    url="http://github.com/RyanSkraba/",
-    author="Ryan Skraba",
-    author_email="ryan@skraba.com",
-    license="ASL",
-    packages=["lucidoitdoit"],
-    package_data={
-        "lucidoitdoit": ["protocol.avsc"],
-    },
-    scripts=["bin/lucidoitdoit", "bin/lucisetup"],
-    install_requires=["avro==1.10.0", "docopt==0.6.2"],
-    classifiers=[
-        "Development Status :: 3 - Alpha",
-        "License :: OSI Approved :: Apache Software License",
-    ],
-    test_suite="nose.collector",
-    tests_require=["nose"],
-    zip_safe=False,
-)
+class LuciAvroSessionTestSuite(unittest.TestCase):
+    """Test cases for LuciAvroSession."""
+
+    def test_schema_check(self):
+        """Basic check on schema."""
+        protocol_schema = LuciAvroSession.get_schema()
+        self.assertIsNotNone(protocol_schema)
+        self.assertEqual(protocol_schema.type, "record")
+        self.assertEqual(len(protocol_schema.fields), 1)
+        self.assertEqual(protocol_schema.fields[0].name, "all")
+        self.assertEqual(protocol_schema.fields[0].type.type, "union")
+
+
+if __name__ == "__main__":
+    # logging.basicConfig(level=logging.DEBUG)
+    unittest.main()
