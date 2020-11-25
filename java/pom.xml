@@ -183,6 +183,7 @@
             <version>${hamcrest.version}</version>
             <scope>test</scope>
         </dependency>
+
         <dependency>
             <groupId>org.python</groupId>
             <artifactId>jython-standalone</artifactId>
@@ -203,6 +204,12 @@
                     <groupId>org.apache.beam</groupId>
                     <artifactId>beam-sdks-java-harness</artifactId>
                     <version>${beam.version}</version>
+                </dependency>
+
+                <dependency>
+                    <groupId>org.hamcrest</groupId>
+                    <artifactId>hamcrest</artifactId>
+                    <version>${hamcrest.version}</version>
                 </dependency>
             </dependencies>
         </profile>
