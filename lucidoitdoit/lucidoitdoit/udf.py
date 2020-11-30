@@ -24,6 +24,11 @@ import logging
 import uuid
 from typing import Any
 
+import RestrictedPython as rp
+from RestrictedPython import safe_builtins
+from RestrictedPython import limited_builtins
+from RestrictedPython import utility_builtins
+
 
 class LuciUdfRegistry(object):
     @staticmethod
@@ -39,18 +44,44 @@ def udf(input):
         )
 
     @staticmethod
-    def udfize_def(input: str, glbCtx: dict = None, lclCtx: dict = None):
+    def get_safe_globals():
+        glbCtx = {"__builtins__": safe_builtins}
+
+        # default overrides
+        # https://restrictedpython.readthedocs.io/en/latest/usage/basic_usage.html#necessary-setup
+
+        # enable classes
+        glbCtx["__metaclass__"] = type
+
+        # enable getters / iteration
+        from RestrictedPython.Guards import safer_getattr
+        from RestrictedPython.Eval import default_guarded_getitem
+        from RestrictedPython.Eval import default_guarded_getiter
+        glbCtx['_getattr_'] = safer_getattr
+        glbCtx['_getitem_'] = default_guarded_getitem
+        glbCtx['_getiter_'] = default_guarded_getiter
+
+        # enable specific imports
+        import importlib
+        glbCtx['__import__'] = importlib.__import__
+        
+        return glbCtx
+
+
+
+    @staticmethod
+    def udfize_def(code: str, glbCtx: dict = None, lclCtx: dict = None):
+        if glbCtx is None:
+            glbCtx = LuciUdfRegistry.get_safe_globals()
         if lclCtx is None:
             lclCtx = {}
-        if glbCtx is None:
-            glbCtx = {}
 
-        udf_ast = ast.parse(LuciUdfRegistry.udfize_def_string(input), filename="<udf>")
+        udf = LuciUdfRegistry.udfize_def_string(code)
+        udf_ast = ast.parse(udf, filename="<udf>")
 
-        finder = UdfSecurityChecker()
-        finder.visit(udf_ast)
+        result = rp.compile_restricted(udf_ast, filename="<string>", mode="exec")
+        exec(result, glbCtx, lclCtx)
 
-        exec(compile(udf_ast, filename="<udf>", mode="exec"), glbCtx, lclCtx)
         return lclCtx["udf"]
 
     def __init__(self) -> None:
@@ -74,33 +105,28 @@ def udf(input):
         return self.udf_registry[id](input)
 
 
-class UdfSecurityChecker(ast.NodeVisitor):
-    def __init__(self):
-        self.log = logging.getLogger(__name__)
-        self.usesDoubleUnderscore = False
-        self.ximport = []
-        self.ximportfrom = []
+if __name__ == "__main__":
+    input = "a,b,c,d,e"
+    # script = "print(input)\n   output=input"
+    # script = "import os"
+    # script = "output = input + '1'"
+    # script = "output = [input for i in range(0,5)]"
+    script = "element = input.split(',')\noutput = element[3].upper()\n"
+    # script = "import os\noutput = [input for i in range(0,5)]"
+    # script = "import json\nelement = input.split(',')\noutput = element[3].upper()\n"
+    # script = "i = 1\nwhile i < 6:\n\tprint(i)\n\ti += 1\noutput=input"
 
-    def generic_visit(self, node: ast.AST) -> Any:
-        self.log.debug("AST: %s", node)
-        super().generic_visit(node)
+    # input = {"id": "id", "airlines": ['airline1'], "date": '01/01/2010', "lat": 40.7772, "lon": -73.9552 }
+    # with open('lucidoitdoit/examples/geohash.py', 'r') as file:
+    #     script = file.read()
 
-    def visit_Attribute(self, node: ast.Attribute) -> Any:
-        if node.attr.startswith("__"):
-            self.usesDoubleUnderscore = True
-        self.generic_visit(node)
-
-    def visit_Import(self, node: ast.Import) -> Any:
-        for alias in node.names:
-            self.ximport.append(alias.name)
-            self.log.debug("IMPORTING: %s", alias.name)
-        self.generic_visit(node)
-
-    def visit_ImportFrom(self, node: ast.ImportFrom) -> Any:
-        for alias in node.names:
-            self.ximportfrom.append(alias.name)
-            self.log.debug("IMPORTING FROM: %s", alias.name)
-        self.generic_visit(node)
-
-    def is_probably_valid(self) -> bool:
-        return not self.usesDoubleUnderscore
+    registry = LuciUdfRegistry()
+    try:
+        glbCtx = None
+        lclCtx = {}
+        udf = registry.udfize_def(script, glbCtx, lclCtx)
+        output = udf(input)
+        logging.debug(output)
+        print(output)
+    except SyntaxError as e:
+        print(e)
