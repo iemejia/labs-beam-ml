@@ -10,9 +10,11 @@ import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.beam.vendor.grpc.v1p26p0.com.google.common.io.ByteStreams;
 import org.apache.beam.vendor.grpc.v1p26p0.com.google.common.primitives.Bytes;
+import org.python.google.common.base.Strings;
 
 class Client {
 
@@ -33,10 +35,20 @@ class Client {
    * @param code python code
    * @return id of the function in the server
    */
-  String registerCode(String code) {
+  String registerCode(String code) throws PythonServerException {
     byte[] data = Bytes.concat(new byte[]{0x00}, lengthPrefixedBytes(code));
-//    String response = request(data);
-    return requestOne(data);
+    String response = requestOne(data);
+    // TODO this MUST be removed once we have Exception handling in the protocol
+    checkForExceptions(Arrays.asList(response));
+    return response;
+  }
+
+  public void checkForExceptions(List<String> responses) throws PythonServerException {
+    for (String response : responses) {
+      if (!Strings.isNullOrEmpty(response) && response.trim().startsWith("ERROR")) {
+        throw new PythonServerException(response);
+      }
+    }
   }
 
   /**
@@ -44,11 +56,12 @@ class Client {
    * @param element to process
    * @return processed element
    */
-  List<String> execute(String codeId, String element) {
+  List<String> execute(String codeId, String element) throws PythonServerException {
     byte[] data =
         Bytes.concat(new byte[] {0x01}, lengthPrefixedBytes(codeId), lengthPrefixedBytes(element));
-//    String response = request(data);
-//    return response;
+    List<String> responses = request(data);
+    // TODO this MUST be removed once we have Exception handling in the protocol
+    checkForExceptions(responses);
     return request(data);
   }
 

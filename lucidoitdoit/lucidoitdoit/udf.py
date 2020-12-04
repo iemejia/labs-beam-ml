@@ -21,6 +21,7 @@
 
 import ast
 import logging
+import sys
 import uuid
 from typing import Any
 
@@ -62,16 +63,26 @@ def udf(input):
         id = str(uuid.uuid4()).encode("utf-8")
         try:
             self.udf_registry[id] = LuciUdfRegistry.udfize_def(code)
-        except SyntaxError as e:
-            # This might not be an accurate assessment of the position of the error.
-            line = e.lineno - 2
-            column = e.offset - 1
-            self.log.debug("Guessing line and column: %s:%s", line, column)
-            raise e
+        # except SyntaxError as e:
+        #     # This might not be an accurate assessment of the position of the error.
+        #     line = e.lineno - 2
+        #     column = e.offset - 1
+        #     self.log.debug("Guessing line and column: %s:%s", line, column)
+        #     # TODO ugly hack to simulate exceptions
+        #     return "ERROR: %s" % e.msg
+        except:
+            e = sys.exc_info()[0]
+            return e
+            # raise e
         return id
 
     def exec(self, id: bytes, input: str) -> Any:
         return self.udf_registry[id](input)
+        # try:
+        #     result = self.udf_registry[id](input)
+        # catch Exception:
+        #     print("error")
+        # return result
 
 
 class UdfSecurityChecker(ast.NodeVisitor):
@@ -104,3 +115,27 @@ class UdfSecurityChecker(ast.NodeVisitor):
 
     def is_probably_valid(self) -> bool:
         return not self.usesDoubleUnderscore
+
+
+
+if __name__ == "__main__":
+    input = "a,b,c,d,e"
+
+    script = "element = input.split(',')\noutput = element[3].upper()"
+    script = "impot os\noutput = [input for i in range(0,5)]"
+
+    # input = {"id": "id", "airlines": ['airline1'], "date": '01/01/2010', "lat": 40.7772, "lon": -73.9552 }
+    # with open('lucidoitdoit/examples/geohash.py', 'r') as file:
+    #     script = file.read()
+
+    print("input\n%s" % input)
+    print()
+    print("script\n%s" % script)
+    print()
+    registry = LuciUdfRegistry()
+    id = registry.put(script)
+    print(id)
+    registry.exec(id, script)
+    # output = udf(input)
+    print(output)
+
